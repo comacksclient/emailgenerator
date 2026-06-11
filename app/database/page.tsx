@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { Email, VerifyStatus } from "@/types";
 import { DataTable } from "@/components/DataTable";
-import { Search, Download, Loader2 } from "lucide-react";
+import { Search, Download, Loader2, Trash2 } from "lucide-react";
 
 export default function DatabasePage() {
   const [emails, setEmails] = useState<Email[]>([]);
@@ -16,6 +16,7 @@ export default function DatabasePage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   // Debounce search input by 350ms
   useEffect(() => {
@@ -28,32 +29,60 @@ export default function DatabasePage() {
   }, [search]);
 
   // Fetch emails on filters and page changes
-  useEffect(() => {
-    async function fetchEmails() {
-      setLoading(true);
-      try {
-        const queryParams = new URLSearchParams({
-          page: page.toString(),
-          status: statusFilter,
-          search: debouncedSearch,
-        });
+  const fetchEmails = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        status: statusFilter,
+        search: debouncedSearch,
+      });
 
-        const res = await apiFetch(`/api/database?${queryParams.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setEmails(data.emails || []);
-          setTotalCount(data.total || 0);
-          setTotalPages(data.totalPages || 1);
-        }
-      } catch (err) {
-        console.error("Failed to fetch database emails", err);
-      } finally {
-        setLoading(false);
+      const res = await apiFetch(`/api/database?${queryParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmails(data.emails || []);
+        setTotalCount(data.total || 0);
+        setTotalPages(data.totalPages || 1);
       }
+    } catch (err) {
+      console.error("Failed to fetch database emails", err);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchEmails();
   }, [page, statusFilter, debouncedSearch]);
+
+  const handleDeleteAction = async (action: string, confirmMsg: string) => {
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeleteLoading(action);
+    try {
+      const res = await apiFetch(`/api/database?action=${action}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || "Operation completed successfully.");
+        // Reset list view parameters
+        setPage(1);
+        setStatusFilter("all");
+        setSearch("");
+        setDebouncedSearch("");
+        await fetchEmails();
+      } else {
+        alert(data.error || "Failed to execute delete action.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred deleting records.");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
 
   const handleExportAll = async () => {
     setExportLoading(true);
@@ -91,7 +120,7 @@ export default function DatabasePage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Title & Action Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
         <div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight">
             Email Database
@@ -101,23 +130,81 @@ export default function DatabasePage() {
           </p>
         </div>
 
-        <button
-          onClick={handleExportAll}
-          disabled={exportLoading}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 border border-slate-800 hover:bg-slate-800 active:scale-95 text-slate-200 font-bold rounded-2xl shadow-xl transition-all text-sm cursor-pointer disabled:opacity-50"
-        >
-          {exportLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Exporting...
-            </>
-          ) : (
-            <>
-              <Download className="w-4 h-4" />
-              Export Full Database CSV
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Danger zone actions */}
+          <button
+            onClick={() =>
+              handleDeleteAction(
+                "delete_pending",
+                "Are you sure you want to delete ALL pending email candidates? This action cannot be undone."
+              )
+            }
+            disabled={deleteLoading !== null || loading}
+            className="px-4 py-2.5 border border-red-500/20 hover:border-red-500/40 bg-red-950/10 hover:bg-red-950/30 text-red-400 font-bold rounded-xl text-xs transition-all active:scale-95 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+          >
+            {deleteLoading === "delete_pending" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            Clear Pending
+          </button>
+
+          <button
+            onClick={() =>
+              handleDeleteAction(
+                "delete_invalid",
+                "Are you sure you want to delete ALL invalid email candidates? This action cannot be undone."
+              )
+            }
+            disabled={deleteLoading !== null || loading}
+            className="px-4 py-2.5 border border-red-500/20 hover:border-red-500/40 bg-red-950/10 hover:bg-red-950/30 text-red-400 font-bold rounded-xl text-xs transition-all active:scale-95 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+          >
+            {deleteLoading === "delete_invalid" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            Clear Invalid
+          </button>
+
+          <button
+            onClick={() =>
+              handleDeleteAction(
+                "clear_all",
+                "WARNING: This will delete ALL contacts and ALL email candidates, resetting the database completely. Are you sure you want to proceed?"
+              )
+            }
+            disabled={deleteLoading !== null || loading}
+            className="px-4 py-2.5 border border-red-650/35 hover:border-red-650/60 bg-red-650/10 hover:bg-red-650/20 text-red-400 font-extrabold rounded-xl text-xs transition-all active:scale-95 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+          >
+            {deleteLoading === "clear_all" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            Reset DB
+          </button>
+
+          {/* Export button */}
+          <button
+            onClick={handleExportAll}
+            disabled={exportLoading || deleteLoading !== null}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-900 border border-slate-805 hover:bg-slate-800 active:scale-95 text-slate-200 font-bold rounded-xl shadow-xl transition-all text-sm cursor-pointer disabled:opacity-50"
+          >
+            {exportLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Export Full Database CSV
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filters and Search Bar */}

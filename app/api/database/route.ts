@@ -83,3 +83,64 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  const authError = checkAuth(req);
+  if (authError) return authError;
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+
+    if (action === "clear_all") {
+      // Deleting all contacts will cascade-delete all emails
+      const contactsDeleted = await prisma.contact.deleteMany();
+      return NextResponse.json({
+        success: true,
+        message: "Successfully reset database.",
+        count: contactsDeleted.count,
+      });
+    }
+
+    if (action === "delete_pending") {
+      const deletedEmails = await prisma.email.deleteMany({
+        where: { verifyStatus: "PENDING" },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Successfully cleared all pending emails.",
+        count: deletedEmails.count,
+      });
+    }
+
+    if (action === "delete_invalid") {
+      const deletedEmails = await prisma.email.deleteMany({
+        where: { verifyStatus: "INVALID" },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Successfully cleared all invalid emails.",
+        count: deletedEmails.count,
+      });
+    }
+
+    if (action === "delete_email") {
+      const id = searchParams.get("id");
+      if (!id) {
+        return NextResponse.json({ error: "Missing email ID" }, { status: 400 });
+      }
+      await prisma.email.delete({
+        where: { id },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Successfully deleted email candidate.",
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid action parameter" }, { status: 400 });
+  } catch (err) {
+    console.error("database DELETE error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
