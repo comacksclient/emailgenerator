@@ -1,0 +1,51 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  company   String   @default("")
+  domain    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  emails    Email[]
+
+  @@unique([firstName, lastName, company])
+  @@map("contacts")
+}
+
+model Email {
+  id           String       @id @default(cuid())
+  email        String       @unique  // UNIQUE enforced at DB level — core dedup
+  pattern      String
+  patternRank  Int
+  domain       String
+  verifyStatus VerifyStatus @default(PENDING)
+  verifiedAt   DateTime?
+  contactId    String
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([verifyStatus])
+  @@index([domain])
+  @@index([contactId])
+  @@map("emails")
+}
+
+enum VerifyStatus {
+  PENDING
+  VALID
+  INVALID
+  UNKNOWN
+}
