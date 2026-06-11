@@ -28,7 +28,7 @@ export default async function DashboardPage() {
       prisma.email.count({ where: { verifyStatus: "PENDING" } }),
       prisma.email.findMany({
         take: 10,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ verifyStatus: "asc" }, { createdAt: "desc" }],
         include: {
           contact: {
             select: {

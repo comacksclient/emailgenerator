@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
     let skipped = 0;
 
     for (const row of rows) {
-      const status = normalizeStatus(row.status);
-
+      const status = normalizeStatus(row.status, row.technicalStatus);
 
       const existing = await prisma.email.findUnique({
         where: { email: row.email },
@@ -59,9 +58,9 @@ export async function POST(req: NextRequest) {
         });
         markedValid++;
       } else if (status === "INVALID") {
-
-        await prisma.email.delete({
+        await prisma.email.update({
           where: { id: existing.id },
+          data: { verifyStatus: "INVALID", verifiedAt: new Date() },
         });
         deleted++;
       } else {

@@ -42,8 +42,8 @@ model Email {
 }
 
 enum VerifyStatus {
-  PENDING
   VALID
+  PENDING
   INVALID
   UNKNOWN
 }

@@ -74,57 +74,75 @@ export function parseContactsCSV(csvText: string): ParseResult {
   return { valid, skipped, errors };
 }
 
-export function parseVerifyResultCSV(csvText: string): Array<{
+export interface VerifyRow {
   email: string;
   status: string;
-}> {
+  technicalStatus: string;
+}
+
+export function parseVerifyResultCSV(csvText: string): VerifyRow[] {
   const result = Papa.parse<Record<string, string>>(csvText.trim(), {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (h) => h.trim().toLowerCase(),
+    transformHeader: (h) => h.trim().toLowerCase().replace(/[\s_]+/g, ""),
   });
 
   return result.data
-    .map((row) => ({
-      email: (row["email"] || "").trim().toLowerCase(),
+    .map((row) => {
+      let email = "";
+      let status = "";
+      let technicalStatus = "";
 
-      status: (
-        row["status"] ||
-        row["result"] ||
-        row["is_valid"] ||
-        row["isvalid"] ||
-        row["valid"] ||
-        "unknown"
-      )
-        .trim()
-        .toLowerCase(),
-    }))
+      for (const [key, val] of Object.entries(row)) {
+        const cleanKey = key.trim().toLowerCase().replace(/[\s_]+/g, "");
+        if (cleanKey === "email" || cleanKey === "normalizedemail") {
+          email = val.trim().toLowerCase();
+        } else if (cleanKey === "status") {
+          status = val.trim().toLowerCase();
+        } else if (cleanKey === "technicalstatus") {
+          technicalStatus = val.trim().toLowerCase();
+        }
+      }
+
+      return { email, status, technicalStatus };
+    })
     .filter((r) => r.email.length > 0 && r.email.includes("@"));
 }
 
-
 export function normalizeStatus(
-  raw: string
+  status: string,
+  technicalStatus?: string
 ): "VALID" | "INVALID" | "UNKNOWN" {
-  const s = raw.toLowerCase().trim();
+  const s = status.toLowerCase().trim();
+  const ts = (technicalStatus || "").toLowerCase().trim();
 
-  if (["valid", "true", "1", "ok", "deliverable", "yes"].includes(s)) {
+  // 1. Explicitly check technical status first
+  if (ts) {
+    if (ts === "valid") return "VALID";
+    if (ts === "invalid" || ts === "disposable") return "INVALID";
+    if (ts === "catch_all" || ts === "unknown" || ts === "error") return "UNKNOWN";
+  }
+
+  // 2. Fallback check for business status
+  if (["good", "valid", "true", "1", "ok", "deliverable", "yes"].includes(s)) {
     return "VALID";
   }
 
   if (
     [
+      "bad",
       "invalid",
       "false",
       "0",
       "undeliverable",
       "no",
-      "bad",
       "bounced",
+      "disposable",
     ].includes(s)
   ) {
     return "INVALID";
   }
 
+  // "risky" or "catch_all" defaults to UNKNOWN (stays PENDING for verification flow safety)
   return "UNKNOWN";
 }

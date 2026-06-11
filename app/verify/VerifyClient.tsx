@@ -232,9 +232,9 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
               Upload Apify Result CSV
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Import the result CSV file from Apify. The system will permanently save VALID emails and delete INVALID ones.
+              Import the result CSV file from Apify. The system will save VALID and INVALID email statuses in your database.
             </p>
-
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Drag & Drop */}
               <div
@@ -315,7 +315,7 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
                   <span className="text-emerald-400 text-base block mt-0.5">{result.markedValid}</span>
                 </div>
                 <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block text-[9px] uppercase">Hard Deleted</span>
+                  <span className="text-slate-400 block text-[9px] uppercase">Marked Invalid</span>
                   <span className="text-rose-400 text-base block mt-0.5">{result.deleted}</span>
                 </div>
                 <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-800">
