@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { normalizeDomain } from "./emailPatterns";
 
 export interface ContactRow {
   firstName: string;
@@ -42,11 +43,7 @@ export function parseContactsCSV(csvText: string): ParseResult {
       ""
     ).trim();
 
-    const domain = (row["domain"] || row["company_domain"] || "")
-      .trim()
-      .toLowerCase()
-      .replace(/^@/, "")
-      .replace(/\/$/, "");
+    const domain = normalizeDomain(row["domain"] || row["company_domain"] || "");
 
     const company = (row["company"] || row["company_name"] || "").trim();
 

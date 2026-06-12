@@ -16,11 +16,23 @@ export function normalizeName(s: string): string {
 
 
 export function normalizeDomain(d: string): string {
-  return d
-    .toLowerCase()
-    .trim()
-    .replace(/^@/, "")
-    .replace(/\/$/, "");
+  let clean = d.toLowerCase().trim();
+
+
+  clean = clean.replace(/^https?:\/\//, "");
+
+
+  clean = clean.split("/")[0].split("?")[0].split("#")[0];
+
+  clean = clean.split(":")[0];
+
+
+  clean = clean.replace(/^www\d*\./, "");
+
+
+  clean = clean.replace(/^@/, "").replace(/\.+$/, "");
+
+  return clean;
 }
 
 
