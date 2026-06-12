@@ -9,10 +9,19 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const exportAll = searchParams.get("all") === "true";
+    const rankStr = searchParams.get("rank");
+    const rank = rankStr ? parseInt(rankStr) : null;
 
+    const where: any = {};
+    if (!exportAll) {
+      where.verifyStatus = "PENDING";
+      if (rank !== null && !isNaN(rank)) {
+        where.patternRank = rank;
+      }
+    }
 
     const emails = await prisma.email.findMany({
-      where: exportAll ? undefined : { verifyStatus: "PENDING" },
+      where: exportAll ? undefined : where,
       include: {
         contact: {
           select: { firstName: true, lastName: true, company: true },
@@ -33,7 +42,7 @@ export async function GET(req: NextRequest) {
       ? "email,contact_name,company,pattern,domain,status"
       : "email,contact_name,company,pattern,domain";
 
-    const rows = emails.map((e) => {
+    const rows = emails.map((e: any) => {
       const name = `${e.contact.firstName} ${e.contact.lastName}`;
       const company = e.contact.company ?? "";
       if (exportAll) {

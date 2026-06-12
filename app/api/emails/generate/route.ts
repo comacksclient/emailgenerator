@@ -16,9 +16,14 @@ export async function POST(req: NextRequest) {
     const maxPatterns = Math.min(body.maxPatterns ?? 7, 8);
 
     const contacts = await prisma.contact.findMany({
-      where: body.contactIds?.length
-        ? { id: { in: body.contactIds } }
-        : undefined,
+      where: {
+        id: body.contactIds?.length ? { in: body.contactIds } : undefined,
+        emails: {
+          none: {
+            verifyStatus: "VALID",
+          },
+        },
+      },
     });
 
     if (contacts.length === 0) {
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
         where: { email: { in: variants.map((v) => v.email) } },
         select: { email: true },
       });
-      const existingSet = new Set(existing.map((e) => e.email));
+      const existingSet = new Set(existing.map((e: any) => e.email));
 
       const newOnes = variants.filter((v) => !existingSet.has(v.email));
       skipped += variants.length - newOnes.length;

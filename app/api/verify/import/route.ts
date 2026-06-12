@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
       const existing = await prisma.email.findUnique({
         where: { email: row.email },
-        select: { id: true, verifyStatus: true },
+        select: { id: true, verifyStatus: true, contactId: true },
       });
 
 
@@ -56,6 +56,16 @@ export async function POST(req: NextRequest) {
           where: { id: existing.id },
           data: { verifyStatus: "VALID", verifiedAt: new Date() },
         });
+
+        // Cost Optimization: Delete all other candidate email options for this contact
+        // since we found and validated their correct deliverable email.
+        await prisma.email.deleteMany({
+          where: {
+            contactId: existing.contactId,
+            id: { not: existing.id },
+          },
+        });
+
         markedValid++;
       } else if (status === "INVALID") {
         await prisma.email.update({

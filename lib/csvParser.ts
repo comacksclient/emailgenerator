@@ -28,20 +28,37 @@ export function parseContactsCSV(csvText: string): ParseResult {
   for (const [i, row] of result.data.entries()) {
     const lineNum = i + 2;
 
+    const fullName = (
+      row["full_name"] ||
+      row["fullname"] ||
+      row["name"] ||
+      ""
+    ).trim();
 
-    const firstName = (
+    let firstName = (
       row["first_name"] ||
       row["firstname"] ||
       row["first"] ||
       ""
     ).trim();
 
-    const lastName = (
+    let lastName = (
       row["last_name"] ||
       row["lastname"] ||
       row["last"] ||
       ""
     ).trim();
+
+    // Fallback: if either first or last name is missing, and we have a full name, split it
+    if ((!firstName || !lastName) && fullName) {
+      const parts = fullName.split(/\s+/);
+      if (!firstName) {
+        firstName = parts[0] || "";
+      }
+      if (!lastName) {
+        lastName = parts.slice(1).join(" ") || "";
+      }
+    }
 
     const domain = normalizeDomain(row["domain"] || row["company_domain"] || "");
 

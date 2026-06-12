@@ -31,6 +31,7 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
     skipped: number;
   } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedRank, setSelectedRank] = useState<string>("all");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +39,11 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
     setExportLoading(true);
     setApiError(null);
     try {
-      const res = await apiFetch("/api/emails/export");
+      const queryParams = new URLSearchParams();
+      if (selectedRank !== "all") {
+        queryParams.set("rank", selectedRank);
+      }
+      const res = await apiFetch(`/api/emails/export?${queryParams.toString()}`);
       if (!res.ok) {
         const data = await res.json();
         setApiError(data.error || "No pending emails found to export.");
@@ -49,7 +54,8 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pending_emails_${new Date().toISOString().slice(0, 10)}.csv`;
+      const rankSuffix = selectedRank !== "all" ? `_rank_${selectedRank}` : "";
+      a.download = `pending_emails${rankSuffix}_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -191,13 +197,34 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
               </div>
             </div>
 
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                Select Pattern Rank to Verify (Cost-Optimization)
+              </label>
+              <select
+                value={selectedRank}
+                onChange={(e) => setSelectedRank(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 rounded-xl p-3 text-sm text-slate-200 outline-none cursor-pointer"
+              >
+                <option value="all">All Pending Patterns (Verify All)</option>
+                <option value="1">Rank 1 only (first.last — ~42% coverage)</option>
+                <option value="2">Rank 2 only (f.last — ~28% coverage)</option>
+                <option value="3">Rank 3 only (flast — ~15% coverage)</option>
+                <option value="4">Rank 4 only (firstlast — ~11% coverage)</option>
+                <option value="5">Rank 5 only (first — ~9% coverage)</option>
+                <option value="6">Rank 6 only (last.first — ~7% coverage)</option>
+                <option value="7">Rank 7 only (first.l — ~5% coverage)</option>
+                <option value="8">Rank 8 only (first_last — ~3% coverage)</option>
+              </select>
+            </div>
+
             <div className="bg-slate-900/30 p-4 rounded-xl text-xs text-slate-400 space-y-2 border border-slate-850">
               <p className="font-semibold text-slate-300">Apify verification instructions:</p>
               <ol className="list-decimal list-inside space-y-1">
+                <li>Select the current target pattern rank above.</li>
                 <li>Download the pending emails CSV using the button below.</li>
-                <li>Go to Apify and run your preferred email validation actor.</li>
-                <li>Upload this CSV to the actor to run validation.</li>
-                <li>Download the result file (needs columns: <span className="font-mono text-indigo-400">email</span> and <span className="font-mono text-indigo-400">status</span>).</li>
+                <li>Go to Apify, run the validation actor, and import the results back.</li>
+                <li>Once an email is verified, other pending formats are automatically cleaned up!</li>
               </ol>
             </div>
           </div>
