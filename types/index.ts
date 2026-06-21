@@ -16,7 +16,7 @@ export interface Email {
   pattern: string;
   patternRank: number;
   domain: string;
-  verifyStatus: VerifyStatus;
+  result: VerifyStatus;
   verifiedAt: string | null;
   contactId: string;
   contact?: Contact;

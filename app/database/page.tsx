@@ -97,7 +97,7 @@ export default function DatabasePage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `all_emails_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `valid_emails_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -200,7 +200,7 @@ export default function DatabasePage() {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                Export Full Database CSV
+                Export Valid Emails CSV
               </>
             )}
           </button>

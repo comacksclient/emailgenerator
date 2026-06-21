@@ -7,7 +7,7 @@ export const revalidate = 0;
 export default async function VerifyPage() {
   const pendingCount = await prisma.email.count({
     where: {
-      verifyStatus: "PENDING",
+      result: "PENDING",
     },
   });
 

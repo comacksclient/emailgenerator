@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
         id: body.contactIds?.length ? { in: body.contactIds } : undefined,
         emails: {
           none: {
-            verifyStatus: "VALID",
+            result: "VALID",
           },
         },
       },
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
           patternRank: v.patternRank,
           domain: v.domain,
           contactId: contact.id,
-          verifyStatus: "PENDING",
+          result: "PENDING",
         })),
         skipDuplicates: true,
       });

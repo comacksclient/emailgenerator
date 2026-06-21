@@ -24,11 +24,11 @@ export default async function DashboardPage() {
     ] = await Promise.all([
       prisma.contact.count(),
       prisma.email.count(),
-      prisma.email.count({ where: { verifyStatus: "VALID" } }),
-      prisma.email.count({ where: { verifyStatus: "PENDING" } }),
+      prisma.email.count({ where: { result: "VALID" } }),
+      prisma.email.count({ where: { result: "PENDING" } }),
       prisma.email.findMany({
         take: 10,
-        orderBy: [{ verifyStatus: "asc" }, { createdAt: "desc" }],
+        orderBy: [{ result: "desc" }, { updatedAt: "desc" }],
         include: {
           contact: {
             select: {
@@ -154,18 +154,19 @@ export default async function DashboardPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                    <th className="py-4 px-6">Email Candidate</th>
                     <th className="py-4 px-6">Contact Name</th>
+                    <th className="py-4 px-6">Email Address</th>
                     <th className="py-4 px-6">Company</th>
-                    <th className="py-4 px-6">Pattern Rank</th>
-                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6">Pattern</th>
+                    <th className="py-4 px-6">Result</th>
+                    <th className="py-4 px-6">Verified At</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-sm">
                   {recentEmails.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="py-10 text-center text-slate-500 font-medium"
                       >
                         No email candidates generated yet.
@@ -176,25 +177,43 @@ export default async function DashboardPage() {
                       const contactName = email.contact
                         ? `${email.contact.firstName} ${email.contact.lastName}`
                         : "Unknown Contact";
+                      const formatVerifiedDate = (dateStr: Date | null) => {
+                        if (!dateStr) return "-";
+                        try {
+                          const date = new Date(dateStr);
+                          return date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                        } catch {
+                          return "-";
+                        }
+                      };
                       return (
                         <tr
                           key={email.id}
                           className="hover:bg-slate-800/20 text-slate-300 transition-all duration-150"
                         >
+                          <td className="py-4 px-6">{contactName}</td>
                           <td className="py-4 px-6 font-mono text-xs text-indigo-400 font-semibold select-all">
                             {email.email}
                           </td>
-                          <td className="py-4 px-6">{contactName}</td>
                           <td className="py-4 px-6">
                             {email.contact?.company || "-"}
                           </td>
                           <td className="py-4 px-6">
-                            <span className="font-mono text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                              Rank {email.patternRank} ({email.pattern})
+                            <span className="font-mono text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                              {email.pattern}
                             </span>
                           </td>
                           <td className="py-4 px-6">
-                            <StatusBadge status={email.verifyStatus} />
+                            <StatusBadge status={email.result} />
+                          </td>
+                          <td className="py-4 px-6 text-slate-500 text-xs">
+                            {formatVerifiedDate(email.verifiedAt)}
                           </td>
                         </tr>
                       );

@@ -42,11 +42,11 @@ export function DataTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800 bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-              <th className="py-4 px-6">Email Address</th>
               <th className="py-4 px-6">Contact Name</th>
+              <th className="py-4 px-6">Email Address</th>
               <th className="py-4 px-6">Company</th>
               <th className="py-4 px-6">Pattern</th>
-              <th className="py-4 px-6">Status</th>
+              <th className="py-4 px-6">Result</th>
               <th className="py-4 px-6">Verified At</th>
             </tr>
           </thead>
@@ -56,10 +56,10 @@ export function DataTable({
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
                   <td className="py-4 px-6">
-                    <div className="h-4 bg-slate-800 rounded w-48" />
+                    <div className="h-4 bg-slate-800 rounded w-28" />
                   </td>
                   <td className="py-4 px-6">
-                    <div className="h-4 bg-slate-800 rounded w-28" />
+                    <div className="h-4 bg-slate-800 rounded w-48" />
                   </td>
                   <td className="py-4 px-6">
                     <div className="h-4 bg-slate-800 rounded w-24" />
@@ -93,14 +93,14 @@ export function DataTable({
                     key={email.id}
                     className="hover:bg-slate-800/30 text-slate-300 transition-colors duration-150"
                   >
-                    <td className="py-4 px-6 font-mono text-xs text-indigo-400 select-all font-semibold">
-                      {email.email}
-                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <User2 className="w-3.5 h-3.5 text-slate-500" />
                         <span>{contactName}</span>
                       </div>
+                    </td>
+                    <td className="py-4 px-6 font-mono text-xs text-indigo-400 select-all font-semibold">
+                      {email.email}
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function DataTable({
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <StatusBadge status={email.verifyStatus} />
+                      <StatusBadge status={email.result} />
                     </td>
                     <td className="py-4 px-6 text-slate-500 text-xs">
                       <div className="flex items-center gap-2">

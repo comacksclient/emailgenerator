@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useRef, DragEvent } from "react";
+import React, { useState, useRef, DragEvent, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import {
-  Download,
   UploadCloud,
   CheckCircle,
   AlertTriangle,
@@ -11,6 +10,9 @@ import {
   Clipboard,
   ExternalLink,
   Info,
+  Copy,
+  Check,
+  Download,
 } from "lucide-react";
 
 interface VerifyClientProps {
@@ -32,10 +34,56 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
   } | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedRank, setSelectedRank] = useState<string>("all");
+  const [emailsList, setEmailsList] = useState<string[]>([]);
+  const [emailsLoading, setEmailsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExport = async () => {
+  const fetchEmailsForRank = async (rank: string) => {
+    setEmailsLoading(true);
+    setApiError(null);
+    try {
+      const queryParams = new URLSearchParams();
+      if (rank !== "all") {
+        queryParams.set("rank", rank);
+      }
+      queryParams.set("json", "true");
+      const res = await apiFetch(`/api/emails/export?${queryParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmailsList(data.emails || []);
+      } else {
+        setEmailsList([]);
+        const data = await res.json();
+        setApiError(data.error || "No pending emails found to export.");
+      }
+    } catch (err) {
+      console.error(err);
+      setApiError("Failed to fetch pending emails.");
+      setEmailsList([]);
+    } finally {
+      setEmailsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmailsForRank(selectedRank);
+  }, [selectedRank, pendingCount]);
+
+  const handleCopy = async () => {
+    if (emailsList.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(emailsList.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy", err);
+      setApiError("Failed to copy to clipboard.");
+    }
+  };
+
+  const handleDownloadCSV = async () => {
     setExportLoading(true);
     setApiError(null);
     try {
@@ -168,19 +216,19 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Section A: Export */}
+        {/* Section A: Copy */}
         <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl flex flex-col justify-between shadow-xl space-y-6">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
               <span className="bg-indigo-600/20 px-2.5 py-1 rounded-full">Section A</span>
-              <span>Export for Apify</span>
+              <span>Copy for Apify</span>
             </div>
             <h3 className="text-xl font-bold text-white tracking-tight">
-              Download Pending Emails
+              Copy Pending Emails
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Export all candidate emails currently set to <span className="text-amber-400 font-semibold">PENDING</span>.
-              Take this exported CSV to your Apify verification actor.
+              Copy candidate emails currently set to <span className="text-amber-400 font-semibold">PENDING</span>.
+              Pasting this list directly into your Apify verification actor is faster than managing files.
             </p>
 
             <div className="bg-slate-950 p-6 rounded-2xl border border-slate-850 flex items-center justify-between select-none">
@@ -218,34 +266,89 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
               </select>
             </div>
 
+            {/* Preview Box */}
+            <div className="space-y-2 pt-2">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+                Pending Emails Preview ({emailsList.length})
+              </label>
+              {emailsLoading ? (
+                <div className="h-32 bg-slate-950 rounded-xl border border-slate-850 flex items-center justify-center text-slate-500 text-xs">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2 text-indigo-400" />
+                  Loading candidate list...
+                </div>
+              ) : emailsList.length === 0 ? (
+                <div className="h-32 bg-slate-950 rounded-xl border border-slate-850 flex items-center justify-center text-slate-500 text-xs font-medium">
+                  No pending emails for this pattern rank.
+                </div>
+              ) : (
+                <div className="relative group">
+                  <textarea
+                    readOnly
+                    value={emailsList.join("\n")}
+                    rows={5}
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 rounded-xl p-3 font-mono text-xs text-indigo-300 placeholder-slate-700 outline-none resize-none cursor-text select-all"
+                  />
+                  <div className="absolute right-3 top-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-slate-500 font-semibold select-none">
+                      CTRL+A to select
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="bg-slate-900/30 p-4 rounded-xl text-xs text-slate-400 space-y-2 border border-slate-850">
               <p className="font-semibold text-slate-300">Apify verification instructions:</p>
               <ol className="list-decimal list-inside space-y-1">
-                <li>Select the current target pattern rank above.</li>
-                <li>Download the pending emails CSV using the button below.</li>
-                <li>Go to Apify, run the validation actor, and import the results back.</li>
-                <li>Once an email is verified, other pending formats are automatically cleaned up!</li>
+                <li>Select the target pattern rank above.</li>
+                <li>Copy the pending emails or download the CSV using the buttons below.</li>
+                <li>Go to Apify, paste the copied list or upload the CSV, and run the verifier.</li>
+                <li>Import the result CSV in Section B below.</li>
               </ol>
             </div>
           </div>
 
-          <button
-            onClick={handleExport}
-            disabled={exportLoading || pendingCount === 0}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-500 active:scale-98 disabled:opacity-40 disabled:hover:bg-indigo-600 disabled:active:scale-100 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer text-sm"
-          >
-            {exportLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Preparing Export...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Download Pending Emails CSV
-              </>
-            )}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleCopy}
+              disabled={emailsLoading || emailsList.length === 0}
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 font-bold rounded-xl shadow-lg transition-all cursor-pointer text-sm ${
+                copied
+                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30 text-white"
+                  : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30 text-white active:scale-98 disabled:opacity-40 disabled:hover:bg-indigo-600 disabled:active:scale-100"
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy Emails
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleDownloadCSV}
+              disabled={emailsLoading || exportLoading || emailsList.length === 0}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-805 hover:bg-slate-750 active:scale-98 disabled:opacity-40 disabled:hover:bg-slate-805 border border-slate-800 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer text-sm"
+            >
+              {exportLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download CSV
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Section B: Import */}
@@ -259,7 +362,7 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
               Upload Apify Result CSV
             </h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Import the result CSV file from Apify. The system will save VALID and INVALID email statuses in your database.
+              Import the result CSV file from Apify. The system will save VALID and INVALID email results in your database.
             </p>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -295,12 +398,12 @@ export function VerifyClient({ initialPendingCount }: VerifyClientProps) {
               <div className="flex flex-col">
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
                   <Clipboard className="w-3 h-3" />
-                  Or Paste Results
+                  Or Paste Result
                 </label>
                 <textarea
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
-                  placeholder="email,status&#10;john.smith@co.com,valid&#10;j.smith@co.com,invalid"
+                  placeholder="email,result&#10;john.smith@co.com,valid&#10;j.smith@co.com,invalid"
                   rows={4}
                   className="w-full bg-slate-950 border border-slate-855 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 rounded-xl p-3 font-mono text-[10px] text-slate-300 placeholder-slate-700 outline-none transition-all"
                 />

@@ -29,11 +29,17 @@ export async function POST(req: NextRequest) {
     let skipped = 0;
 
     for (const row of rows) {
-      const status = normalizeStatus(row.status, row.technicalStatus);
+      const status = normalizeStatus(
+        row.status,
+        row.technicalStatus,
+        row.formatStatus,
+        row.resultVal,
+        row.quality
+      );
 
       const existing = await prisma.email.findUnique({
         where: { email: row.email },
-        select: { id: true, verifyStatus: true, contactId: true },
+        select: { id: true, result: true, contactId: true },
       });
 
 
@@ -44,8 +50,8 @@ export async function POST(req: NextRequest) {
 
 
       if (
-        existing.verifyStatus === "VALID" ||
-        existing.verifyStatus === "INVALID"
+        existing.result === "VALID" ||
+        existing.result === "INVALID"
       ) {
         skipped++;
         continue;
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
       if (status === "VALID") {
         await prisma.email.update({
           where: { id: existing.id },
-          data: { verifyStatus: "VALID", verifiedAt: new Date() },
+          data: { result: "VALID", verifiedAt: new Date() },
         });
 
         // Cost Optimization: Delete all other candidate email options for this contact
@@ -70,7 +76,7 @@ export async function POST(req: NextRequest) {
       } else if (status === "INVALID") {
         await prisma.email.update({
           where: { id: existing.id },
-          data: { verifyStatus: "INVALID", verifiedAt: new Date() },
+          data: { result: "INVALID", verifiedAt: new Date() },
         });
         deleted++;
       } else {

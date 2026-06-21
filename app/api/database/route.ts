@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const where: Prisma.EmailWhereInput = {};
 
     if (status !== "all") {
-      where.verifyStatus = status.toUpperCase() as
+      where.result = status.toUpperCase() as
         | "PENDING"
         | "VALID"
         | "INVALID"
@@ -57,13 +57,13 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        orderBy: [{ verifyStatus: "asc" }, { patternRank: "asc" }],
+        orderBy: [{ result: "desc" }, { updatedAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.email.count({ where }),
       prisma.email.groupBy({
-        by: ["verifyStatus"],
+        by: ["result"],
         _count: { _all: true },
       }),
     ]);
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
       stats: Object.fromEntries(
-        stats.map((s) => [s.verifyStatus, s._count._all])
+        stats.map((s) => [s.result, s._count._all])
       ),
     });
   } catch (err) {
@@ -104,7 +104,7 @@ export async function DELETE(req: NextRequest) {
 
     if (action === "delete_pending") {
       const deletedEmails = await prisma.email.deleteMany({
-        where: { verifyStatus: "PENDING" },
+        where: { result: "PENDING" },
       });
       return NextResponse.json({
         success: true,
@@ -115,7 +115,7 @@ export async function DELETE(req: NextRequest) {
 
     if (action === "delete_invalid") {
       const deletedEmails = await prisma.email.deleteMany({
-        where: { verifyStatus: "INVALID" },
+        where: { result: "INVALID" },
       });
       return NextResponse.json({
         success: true,

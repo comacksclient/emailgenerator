@@ -11,10 +11,13 @@ export async function GET(req: NextRequest) {
     const exportAll = searchParams.get("all") === "true";
     const rankStr = searchParams.get("rank");
     const rank = rankStr ? parseInt(rankStr) : null;
+    const jsonMode = searchParams.get("json") === "true";
 
     const where: any = {};
-    if (!exportAll) {
-      where.verifyStatus = "PENDING";
+    if (exportAll) {
+      where.result = "VALID";
+    } else {
+      where.result = "PENDING";
       if (rank !== null && !isNaN(rank)) {
         where.patternRank = rank;
       }
@@ -31,22 +34,31 @@ export async function GET(req: NextRequest) {
     });
 
     if (emails.length === 0) {
+      if (jsonMode) {
+        return NextResponse.json({ success: true, emails: [] });
+      }
       return NextResponse.json(
         { error: "No emails to export" },
         { status: 404 }
       );
     }
 
+    if (jsonMode) {
+      return NextResponse.json({
+        success: true,
+        emails: emails.map((e: any) => e.email),
+      });
+    }
 
     const header = exportAll
-      ? "email,contact_name,company,pattern,domain,status"
+      ? "email,contact_name,company,pattern,domain,result"
       : "email,contact_name,company,pattern,domain";
 
     const rows = emails.map((e: any) => {
       const name = `${e.contact.firstName} ${e.contact.lastName}`;
       const company = e.contact.company ?? "";
       if (exportAll) {
-        return `"${e.email}","${name}","${company}","${e.pattern}","${e.domain}","${e.verifyStatus}"`;
+        return `"${e.email}","${name}","${company}","${e.pattern}","${e.domain}","${e.result}"`;
       }
       return `"${e.email}","${name}","${company}","${e.pattern}","${e.domain}"`;
     });

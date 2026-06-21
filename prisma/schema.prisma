@@ -28,14 +28,14 @@ model Email {
   pattern      String
   patternRank  Int
   domain       String
-  verifyStatus VerifyStatus @default(PENDING)
+  result       VerifyStatus @default(PENDING)
   verifiedAt   DateTime?
   contactId    String
   contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  @@index([verifyStatus])
+  @@index([result])
   @@index([domain])
   @@index([contactId])
   @@map("emails")
