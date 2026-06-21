@@ -19,12 +19,14 @@ export default async function DashboardPage() {
       totalContacts,
       totalEmails,
       validEmails,
+      catchallEmails,
       pendingEmails,
       recentEmails,
     ] = await Promise.all([
       prisma.contact.count(),
       prisma.email.count(),
       prisma.email.count({ where: { result: "VALID" } }),
+      prisma.email.count({ where: { result: "CATCH_ALL" } }),
       prisma.email.count({ where: { result: "PENDING" } }),
       prisma.email.findMany({
         take: 10,
@@ -86,6 +88,12 @@ export default async function DashboardPage() {
         color: "from-emerald-600/20 to-emerald-500/5 text-emerald-400 border-emerald-500/20",
       },
       {
+        name: "Catch-all Emails",
+        value: catchallEmails,
+        icon: CheckCircle,
+        color: "from-blue-600/20 to-blue-500/5 text-blue-450 border-blue-500/20",
+      },
+      {
         name: "Pending Verification",
         value: pendingEmails,
         icon: Clock,
@@ -105,7 +113,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -154,10 +162,11 @@ export default async function DashboardPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                    <th className="py-4 px-6">Contact Name</th>
-                    <th className="py-4 px-6">Email Address</th>
+                    <th className="py-4 px-6">First Name</th>
+                    <th className="py-4 px-6">Last Name</th>
                     <th className="py-4 px-6">Company</th>
-                    <th className="py-4 px-6">Pattern</th>
+                    <th className="py-4 px-6">Domain</th>
+                    <th className="py-4 px-6">Email Address</th>
                     <th className="py-4 px-6">Result</th>
                     <th className="py-4 px-6">Verified At</th>
                   </tr>
@@ -166,7 +175,7 @@ export default async function DashboardPage() {
                   {recentEmails.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="py-10 text-center text-slate-500 font-medium"
                       >
                         No email candidates generated yet.
@@ -174,9 +183,6 @@ export default async function DashboardPage() {
                     </tr>
                   ) : (
                     recentEmails.map((email) => {
-                      const contactName = email.contact
-                        ? `${email.contact.firstName} ${email.contact.lastName}`
-                        : "Unknown Contact";
                       const formatVerifiedDate = (dateStr: Date | null) => {
                         if (!dateStr) return "-";
                         try {
@@ -197,17 +203,18 @@ export default async function DashboardPage() {
                           key={email.id}
                           className="hover:bg-slate-800/20 text-slate-300 transition-all duration-150"
                         >
-                          <td className="py-4 px-6">{contactName}</td>
-                          <td className="py-4 px-6 font-mono text-xs text-indigo-400 font-semibold select-all">
-                            {email.email}
-                          </td>
+                          <td className="py-4 px-6">{email.contact?.firstName || "-"}</td>
+                          <td className="py-4 px-6">{email.contact?.lastName || "-"}</td>
                           <td className="py-4 px-6">
                             {email.contact?.company || "-"}
                           </td>
                           <td className="py-4 px-6">
                             <span className="font-mono text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">
-                              {email.pattern}
+                              {email.domain}
                             </span>
+                          </td>
+                          <td className="py-4 px-6 font-mono text-xs text-indigo-400 font-semibold select-all">
+                            {email.email}
                           </td>
                           <td className="py-4 px-6">
                             <StatusBadge status={email.result} />

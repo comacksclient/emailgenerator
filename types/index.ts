@@ -1,4 +1,4 @@
-export type VerifyStatus = "PENDING" | "VALID" | "INVALID" | "UNKNOWN";
+export type VerifyStatus = "PENDING" | "VALID" | "INVALID" | "UNKNOWN" | "CATCH_ALL";
 
 export interface Contact {
   id: string;

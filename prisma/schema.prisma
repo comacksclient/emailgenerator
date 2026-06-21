@@ -46,4 +46,5 @@ enum VerifyStatus {
   PENDING
   INVALID
   UNKNOWN
+  CATCH_ALL
 }

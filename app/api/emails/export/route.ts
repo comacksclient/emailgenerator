@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     }
 
     const emails = await prisma.email.findMany({
-      where: exportAll ? undefined : where,
+      where,
       include: {
         contact: {
           select: { firstName: true, lastName: true, company: true },
@@ -33,14 +33,8 @@ export async function GET(req: NextRequest) {
       orderBy: [{ domain: "asc" }, { patternRank: "asc" }],
     });
 
-    if (emails.length === 0) {
-      if (jsonMode) {
-        return NextResponse.json({ success: true, emails: [] });
-      }
-      return NextResponse.json(
-        { error: "No emails to export" },
-        { status: 404 }
-      );
+    if (emails.length === 0 && jsonMode) {
+      return NextResponse.json({ success: true, emails: [] });
     }
 
     if (jsonMode) {
@@ -51,16 +45,23 @@ export async function GET(req: NextRequest) {
     }
 
     const header = exportAll
-      ? "email,contact_name,company,pattern,domain,result"
+      ? "first_name,last_name,company,domain,email,result,verified"
       : "email,contact_name,company,pattern,domain";
 
     const rows = emails.map((e: any) => {
-      const name = `${e.contact.firstName} ${e.contact.lastName}`;
-      const company = e.contact.company ?? "";
+      const firstName = e.contact?.firstName ?? "";
+      const lastName = e.contact?.lastName ?? "";
+      const company = e.contact?.company ?? "";
+      const domain = e.domain ?? "";
+      const email = e.email ?? "";
+      const result = e.result ?? "";
+      const verified = e.verifiedAt ? new Date(e.verifiedAt).toISOString() : "";
+
       if (exportAll) {
-        return `"${e.email}","${name}","${company}","${e.pattern}","${e.domain}","${e.result}"`;
+        return `"${firstName}","${lastName}","${company}","${domain}","${email}","${result}","${verified}"`;
       }
-      return `"${e.email}","${name}","${company}","${e.pattern}","${e.domain}"`;
+      const name = `${firstName} ${lastName}`;
+      return `"${email}","${name}","${company}","${e.pattern}","${domain}"`;
     });
 
     const csv = [header, ...rows].join("\n");

@@ -42,25 +42,24 @@ export async function POST(req: NextRequest) {
         select: { id: true, result: true, contactId: true },
       });
 
-
       if (!existing) {
         skipped++;
         continue;
       }
 
-
       if (
         existing.result === "VALID" ||
-        existing.result === "INVALID"
+        existing.result === "INVALID" ||
+        existing.result === "CATCH_ALL"
       ) {
         skipped++;
         continue;
       }
 
-      if (status === "VALID") {
+      if (status === "VALID" || status === "CATCH_ALL") {
         await prisma.email.update({
           where: { id: existing.id },
-          data: { result: "VALID", verifiedAt: new Date() },
+          data: { result: status, verifiedAt: new Date() },
         });
 
         // Cost Optimization: Delete all other candidate email options for this contact
@@ -74,13 +73,11 @@ export async function POST(req: NextRequest) {
 
         markedValid++;
       } else if (status === "INVALID") {
-        await prisma.email.update({
+        await prisma.email.delete({
           where: { id: existing.id },
-          data: { result: "INVALID", verifiedAt: new Date() },
         });
         deleted++;
       } else {
-
         markedUnknown++;
       }
     }

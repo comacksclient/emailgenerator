@@ -113,6 +113,7 @@ export default function DatabasePage() {
   const statusOptions = [
     { label: "All Candidates", value: "all" },
     { label: "Valid", value: "valid" },
+    { label: "Catch-all", value: "catch_all" },
     { label: "Pending", value: "pending" },
     { label: "Unknown", value: "unknown" },
   ];

@@ -233,7 +233,7 @@ export function normalizeStatus(
   formatStatus?: string,
   resultVal?: string,
   quality?: string
-): "VALID" | "INVALID" | "UNKNOWN" {
+): "VALID" | "INVALID" | "CATCH_ALL" | "UNKNOWN" {
   const s = status.toLowerCase().trim();
   const ts = (technicalStatus || "").toLowerCase().trim();
   const fs = (formatStatus || "").toLowerCase().trim();
@@ -244,7 +244,8 @@ export function normalizeStatus(
   if (ts) {
     if (ts === "valid") return "VALID";
     if (ts === "invalid" || ts === "disposable") return "INVALID";
-    if (ts === "catch_all" || ts === "unknown" || ts === "error") return "UNKNOWN";
+    if (ts === "catch_all" || ts === "catchall" || ts === "risky") return "CATCH_ALL";
+    if (ts === "unknown" || ts === "error") return "UNKNOWN";
   }
 
   // 2. Check formatStatus, resultVal, quality, then status
@@ -282,8 +283,17 @@ export function normalizeStatus(
     ) {
       return "INVALID";
     }
+
+    if (
+      [
+        "catch_all",
+        "catchall",
+        "risky",
+      ].includes(val)
+    ) {
+      return "CATCH_ALL";
+    }
   }
 
-  // "risky" or "catch_all" defaults to UNKNOWN (stays PENDING for verification flow safety)
   return "UNKNOWN";
 }

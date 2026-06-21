@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
         | "PENDING"
         | "VALID"
         | "INVALID"
-        | "UNKNOWN";
+        | "UNKNOWN"
+        | "CATCH_ALL";
     }
 
     if (search) {

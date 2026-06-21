@@ -12,6 +12,11 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       text: "Valid",
       dot: "bg-emerald-400 animate-pulse",
     },
+    CATCH_ALL: {
+      bg: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      text: "Catch-all",
+      dot: "bg-blue-400 animate-pulse",
+    },
     INVALID: {
       bg: "bg-rose-500/10 text-rose-400 border-rose-500/30",
       text: "Invalid",
