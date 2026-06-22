@@ -28,6 +28,29 @@ export async function POST(req: NextRequest) {
     let markedUnknown = 0;
     let skipped = 0;
 
+    // 1. Fetch matching emails in bulk
+    const emailsInDb = await prisma.email.findMany({
+      where: {
+        email: { in: rows.map((r) => r.email) },
+      },
+      select: {
+        id: true,
+        email: true,
+        result: true,
+        contactId: true,
+      },
+    });
+
+    const emailMap = new Map<string, typeof emailsInDb[0]>();
+    for (const e of emailsInDb) {
+      emailMap.set(e.email.toLowerCase(), e);
+    }
+
+    const idsToDelete: string[] = [];
+    const validEmailIds: string[] = [];
+    const catchAllEmailIds: string[] = [];
+    const contactIdsToClean: string[] = [];
+
     for (const row of rows) {
       const status = normalizeStatus(
         row.status,
@@ -37,10 +60,7 @@ export async function POST(req: NextRequest) {
         row.quality
       );
 
-      const existing = await prisma.email.findUnique({
-        where: { email: row.email },
-        select: { id: true, result: true, contactId: true },
-      });
+      const existing = emailMap.get(row.email.toLowerCase());
 
       if (!existing) {
         skipped++;
@@ -56,30 +76,54 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      if (status === "VALID" || status === "CATCH_ALL") {
-        await prisma.email.update({
-          where: { id: existing.id },
-          data: { result: status, verifiedAt: new Date() },
-        });
-
-        // Cost Optimization: Delete all other candidate email options for this contact
-        // since we found and validated their correct deliverable email.
-        await prisma.email.deleteMany({
-          where: {
-            contactId: existing.contactId,
-            id: { not: existing.id },
-          },
-        });
-
+      if (status === "VALID") {
+        validEmailIds.push(existing.id);
+        contactIdsToClean.push(existing.contactId);
+        markedValid++;
+      } else if (status === "CATCH_ALL") {
+        catchAllEmailIds.push(existing.id);
+        contactIdsToClean.push(existing.contactId);
         markedValid++;
       } else if (status === "INVALID") {
-        await prisma.email.delete({
-          where: { id: existing.id },
-        });
+        idsToDelete.push(existing.id);
         deleted++;
       } else {
         markedUnknown++;
       }
+    }
+
+    // 2. Perform bulk updates for VALID
+    if (validEmailIds.length > 0) {
+      await prisma.email.updateMany({
+        where: { id: { in: validEmailIds } },
+        data: { result: "VALID", verifiedAt: new Date() },
+      });
+    }
+
+    // 3. Perform bulk updates for CATCH_ALL
+    if (catchAllEmailIds.length > 0) {
+      await prisma.email.updateMany({
+        where: { id: { in: catchAllEmailIds } },
+        data: { result: "CATCH_ALL", verifiedAt: new Date() },
+      });
+    }
+
+    // 4. Perform bulk deletion of other patterns for validated contacts
+    if (contactIdsToClean.length > 0) {
+      const allKeepIds = [...validEmailIds, ...catchAllEmailIds];
+      await prisma.email.deleteMany({
+        where: {
+          contactId: { in: contactIdsToClean },
+          id: { notIn: allKeepIds },
+        },
+      });
+    }
+
+    // 5. Perform bulk deletion of INVALID emails
+    if (idsToDelete.length > 0) {
+      await prisma.email.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
     }
 
     return NextResponse.json({

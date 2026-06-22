@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
     }
 
     const header = exportAll
-      ? "first_name,last_name,company,domain,email,result,verified"
-      : "email,contact_name,company,pattern,domain";
+      ? "first_name,last_name,company_name,domain,email,result,verified"
+      : "email,contact_name,company_name,pattern,domain";
 
     const rows = emails.map((e: any) => {
       const firstName = e.contact?.firstName ?? "";

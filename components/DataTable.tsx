@@ -44,7 +44,7 @@ export function DataTable({
             <tr className="border-b border-slate-800 bg-slate-900/40 text-slate-400 text-xs font-semibold uppercase tracking-wider">
               <th className="py-4 px-6">First Name</th>
               <th className="py-4 px-6">Last Name</th>
-              <th className="py-4 px-6">Company</th>
+              <th className="py-4 px-6">Company Name</th>
               <th className="py-4 px-6">Domain</th>
               <th className="py-4 px-6">Email Address</th>
               <th className="py-4 px-6">Result</th>
