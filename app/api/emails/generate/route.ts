@@ -30,9 +30,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No contacts found" }, { status: 404 });
     }
 
-    let generated = 0;
-    let skipped = 0;
+    const allVariants: { email: string; pattern: string; patternRank: number; domain: string; contactId: string }[] = [];
+    const contactVariantsMap = new Map<string, typeof allVariants>();
 
+    // 1. Generate all variant combinations in memory
     for (const contact of contacts) {
       const variants = generateEmailsForContact(
         contact.firstName,
@@ -40,35 +41,54 @@ export async function POST(req: NextRequest) {
         contact.domain,
         maxPatterns
       );
-
-      if (variants.length === 0) continue;
-
-
-      const existing = await prisma.email.findMany({
-        where: { email: { in: variants.map((v) => v.email) } },
-        select: { email: true },
-      });
-      const existingSet = new Set(existing.map((e: any) => e.email));
-
-      const newOnes = variants.filter((v) => !existingSet.has(v.email));
-      skipped += variants.length - newOnes.length;
-
-      if (newOnes.length === 0) continue;
-
-      await prisma.email.createMany({
-        data: newOnes.map((v) => ({
+      if (variants.length > 0) {
+        const mapped = variants.map((v) => ({
           email: v.email,
           pattern: v.pattern,
           patternRank: v.patternRank,
           domain: v.domain,
           contactId: contact.id,
-          result: "PENDING",
+        }));
+        allVariants.push(...mapped);
+        contactVariantsMap.set(contact.id, mapped);
+      }
+    }
+
+    if (allVariants.length === 0) {
+      return NextResponse.json({ success: true, generated: 0, skipped: 0 });
+    }
+
+    // 2. Fetch all existing email variants in a single bulk query
+    const existing = await prisma.email.findMany({
+      where: { email: { in: allVariants.map((v) => v.email) } },
+      select: { email: true },
+    });
+    const existingSet = new Set(existing.map((e: any) => e.email.toLowerCase()));
+
+    // 3. Filter out existing emails
+    const newEmailsToInsert = allVariants.filter(
+      (v) => !existingSet.has(v.email.toLowerCase())
+    );
+
+    let generated = 0;
+
+    // 4. Bulk insert new candidate emails
+    if (newEmailsToInsert.length > 0) {
+      const createResult = await prisma.email.createMany({
+        data: newEmailsToInsert.map((v) => ({
+          email: v.email,
+          pattern: v.pattern,
+          patternRank: v.patternRank,
+          domain: v.domain,
+          contactId: v.contactId,
+          result: "PENDING" as const,
         })),
         skipDuplicates: true,
       });
-
-      generated += newOnes.length;
+      generated = createResult.count;
     }
+
+    const skipped = allVariants.length - generated;
 
     return NextResponse.json({ success: true, generated, skipped });
   } catch (err) {
